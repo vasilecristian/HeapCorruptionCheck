@@ -52,7 +52,10 @@ int main(int argc, char* argv[])
 	A* aClass = new A();
 	A* bClass = new A();
 	A* cClass = aClass + 1;
+	int* tt = (int*)&aClass->m_a + 4;
+	//*tt = 100; /// CRASH:  Access violation writing location 
 	//cClass->m_a = 0; /// CRASH:  Access violation writing location 
+
 
 	int* a = new int(2);
 	int* b = new int(4);
@@ -75,14 +78,14 @@ int main(int argc, char* argv[])
 
 
 	
-	char str[16];
+	/*char str[16];
 	str[0] = '\0';
 	for (int i = 0; i<argc; i++) 
 	{
 		strcat(str, argv[i]);    /// CRASH: Stack around the variable 'str' was corrupted.
 		if (i < (argc - 1)) 
 			strcat(str, " ");
-	}
+	}*/
 
 
 	return 0;

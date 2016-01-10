@@ -24,17 +24,6 @@ namespace hcc
 {  
 	unsigned long HeapCC::s_dwPageSize = 0;
 
-	HeapCC::HeapCC()
-    {    
-		
-    }
-
-	HeapCC::~HeapCC()
-    {
-    
-    }
-
-
 	void* HeapCC::Alloc(size_t nSize, bool bAlignTop)
 	{
 		if (s_dwPageSize == 0)
@@ -44,9 +33,9 @@ namespace hcc
 			s_dwPageSize = sysInfo.dwPageSize;
 		}
 
-		PBYTE pPtr = (PBYTE)VirtualAlloc(NULL, nSize + s_dwPageSize, MEM_RESERVE, PAGE_NOACCESS);
+		PBYTE pPtr = (PBYTE)VirtualAlloc(nullptr, nSize + s_dwPageSize, MEM_RESERVE, PAGE_NOACCESS);
 		if (!pPtr)
-			return NULL;
+            return nullptr;
 
 		PBYTE pRet = pPtr;
 		if (bAlignTop)
@@ -59,11 +48,10 @@ namespace hcc
 			pRet += s_dwPageSize;
 
 		if (!VirtualAlloc(pRet, nSize, MEM_COMMIT, PAGE_READWRITE))
-			return NULL;
+            return nullptr;
 
 		// ok
 		return pRet;
-
 	}
     
 
@@ -78,8 +66,6 @@ namespace hcc
 
 		ASSERT(MEM_COMMIT == mbi.State);
 		ASSERT(PAGE_READWRITE == mbi.Protect);
-
-		//size_t nReserveSize = mbi.RegionSize + s_dwPageSize;
 
 		VERIFY(VirtualFree(pPtr, mbi.RegionSize, MEM_DECOMMIT));
 	}

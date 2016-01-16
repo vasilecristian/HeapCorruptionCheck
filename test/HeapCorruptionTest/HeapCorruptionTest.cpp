@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 	A* bClass = new A();
 	A* cClass = aClass + 1;
 	int* tt = (int*)&aClass->m_a + 4;
-	*tt = 100; /// CRASH:  Access violation writing location 
+	//*tt = 100; /// CRASH:  Access violation writing location 
 	//cClass->m_a = 0; /// CRASH:  Access violation writing location 
 
 

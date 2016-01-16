@@ -1,6 +1,10 @@
 #include "HeapCorruptionCheck/HeapCC.h"
 
+#if defined(CHECK_HEAP_CORRUPTION)
+
 #include <windows.h>
+#include <stdio.h>
+#include <iostream>
 
 
 #ifdef _DEBUG
@@ -20,9 +24,38 @@
 #endif // _DEBUG
 
 
+
+
+#ifdef _MSC_VER
+#pragma warning( disable : 4290 ) // C++ exception specification ignored.
+#endif
+void* operator new (std::size_t size, bool checkHeapCorruption)
+{
+	return hcc::HeapCC::Alloc(size);
+}
+void* operator new[](std::size_t size, bool checkHeapCorruption)
+{
+	return hcc::HeapCC::Alloc(size);
+}
+
+void operator delete (void* p, bool checkHeapCorruption) throw()
+{
+	hcc::HeapCC::Free(p);
+}
+void operator delete[](void* p, bool checkHeapCorruption) throw()
+{
+	hcc::HeapCC::Free(p);
+}
+#ifdef _MSC_VER
+#pragma warning( default : 4290 )
+#endif
+
+
 namespace hcc
 {  
-	unsigned long HeapCC::s_dwPageSize = 0;
+    std::atomic<unsigned long> HeapCC::s_dwPageSize = 0;
+
+	CHAR* GetLastErrorText(CHAR *pBuf, ULONG bufSize);
 
 	void* HeapCC::Alloc(size_t nSize, bool bAlignTop)
 	{
@@ -35,7 +68,12 @@ namespace hcc
 
 		PBYTE pPtr = (PBYTE)VirtualAlloc(nullptr, nSize + s_dwPageSize, MEM_RESERVE, PAGE_NOACCESS);
 		if (!pPtr)
-            return nullptr;
+		{
+			CHAR msgText[256];
+			GetLastErrorText(msgText,sizeof(msgText));
+			std::cout << "ERROR:" << msgText << std::endl;
+			return nullptr;
+		}
 
 		PBYTE pRet = pPtr;
 		if (bAlignTop)
@@ -48,7 +86,12 @@ namespace hcc
 			pRet += s_dwPageSize;
 
 		if (!VirtualAlloc(pRet, nSize, MEM_COMMIT, PAGE_READWRITE))
-            return nullptr;
+		{
+			CHAR msgText[256];
+			GetLastErrorText(msgText, sizeof(msgText));
+			std::cout << "ERROR:" << msgText << std::endl;
+			return nullptr;
+		}
 
 		// ok
 		return pRet;
@@ -70,6 +113,45 @@ namespace hcc
 		VERIFY(VirtualFree(pPtr, mbi.RegionSize, MEM_DECOMMIT));
 	}
 
+
+	/** converts "Lasr Error" code into text
+	* @param pBuff the buffer
+	* @param bufSize the size of the buffer
+	* @return error message*/
+	CHAR* GetLastErrorText(CHAR *pBuf, ULONG bufSize)
+	{
+		DWORD retSize;
+		LPTSTR pTemp = NULL;
+
+		if (bufSize < 16) 
+		{
+			if (bufSize > 0) 
+			{
+				pBuf[0] = '\0';
+			}
+			return(pBuf);
+		}
+		retSize = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+			FORMAT_MESSAGE_FROM_SYSTEM |
+			FORMAT_MESSAGE_ARGUMENT_ARRAY,
+			NULL,
+			GetLastError(),
+			LANG_NEUTRAL,
+			(LPTSTR)&pTemp,
+			0,
+			NULL);
+		if (!retSize || pTemp == NULL) 
+		{
+			pBuf[0] = '\0';
+		}
+		else 
+		{
+			pTemp[strlen(pTemp) - 2] = '\0'; //remove cr and newline character
+			sprintf(pBuf, "%0.*s (0x%x)", bufSize - 16, pTemp, GetLastError());
+			LocalFree((HLOCAL)pTemp);
+		}
+		return(pBuf);
+	}
 
 
 	void* HeapCC::operator new(size_t size)
@@ -132,5 +214,7 @@ namespace hcc
 		HeapCC::Free(p);
     };
 
-} // namespace gu
+} // namespace hcc
+
+#endif //CHECK_HEAP_CORRUPTION
 
